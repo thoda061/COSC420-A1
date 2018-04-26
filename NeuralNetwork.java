@@ -4,46 +4,91 @@ import java.text.*;
 
 public class NeuralNetwork {
 
+    //Array of units in the input layer
     private static ArrayList<Unit> input = new ArrayList<>();
+    //Array of units in the hidden layer
     private static ArrayList<Unit> hidden = new ArrayList<>();
+    //Array of units in the output layer
     private static ArrayList<Unit> output = new ArrayList<>();
+    //Bias unit
+    private static Unit bias;
+    //Content of the parameter file
     private static ArrayList<String> pFileContent = new ArrayList<>();
+    //Content of the teacher file
     private static ArrayList<String> tFileContent = new ArrayList<>();
+    //Content of the input file
     private static ArrayList<String> iFileContent = new ArrayList<>();
     private static int epoch = 0;
     private static Double errorCriterion = 0.0;
+    private static ArrayList<HashMap<Unit, Double>> startWeights = new ArrayList<>();
 
     public static void main(String[]args) {
         Scanner sc = new Scanner(System.in);
         int command = 1;
         while (command != 0) {
-            System.out.println("\nCOSC420 Assignment 1\n\nMenu:\n1 initialise\n2 learn"
-                    + " (specify epochs)\n3 learn (to crietion)\n4 test\n5 show weights"
-                    + "\n6 reset\n0 quit\n");
+            System.out.println("\nCOSC420 Assignment 1\n\nMenu:\n1 initialise"
+                    + "\n2 change learning parameters\n3 learn\n4 test\n5 show weights"
+                    + "\n6 show learning parameters\n7 reset\n0 quit\n");
             command = sc.nextInt();
             switch(command) {
                 case 1: 
                     readInput();
-                    break;      
-                case 2: 
+                    break;
+                case 2:
                     if(errorCriterion == 0.0) {
                         System.out.println("Must initialise first");
                     } else {
-                        learn(0);
+                        System.out.println("\nChange Parameters\n1 change learning constant"
+                                + "\n2 change momentum\n3 change error criterion\n0 back");
+                        int subCommand = 1;
+                        subCommand = sc.nextInt();
+                        switch(subCommand) {
+                            case 1:
+                                updateParam(1);
+                                break;
+                            case 2:
+                                updateParam(2);
+                                break;
+                            case 3:
+                                updateParam(3);
+                                break;
+                            case 0:
+                                break;
+                            default:
+                                System.out.println("Invalid command");
+                                break;
+                        }
                     }
                     break;
-                case 3:
+                case 3: 
                     if(errorCriterion == 0.0) {
                         System.out.println("Must initialise first");
                     } else {
-                        learn(1);
+                        System.out.println("\nLearn\n1 learn to criterion\n2"
+                                + " learn to specified epoch\n0 back");
+                        int subCommand = sc.nextInt();
+                        switch(subCommand) {
+                            case 1:
+                                learn(1, iFileContent, tFileContent);
+                                break;
+                            case 2:
+                                learn(0, iFileContent, tFileContent);
+                                break;
+                            case 0:
+                                break;
+                            default:
+                                System.out.println("Invalid command");
+                                break;
+                        }     
                     }
                     break;
                 case 4:
                     if(errorCriterion == 0.0) {
                         System.out.println("Must initialise first");
                     } else {
-                        test();
+                        int matchCount = test();
+                        System.out.println("Number of correct outputs: "
+                                + matchCount + "/" + iFileContent.size());
                     }
                     break;
                 case 5:
@@ -57,7 +102,74 @@ public class NeuralNetwork {
                     if(errorCriterion == 0.0) {
                         System.out.println("Must initialise first");
                     } else {
-                        reset();
+                        System.out.println("Learning Constant: " +
+                                input.get(0).getLearningConstant());
+                        System.out.println("Momentum: " + 
+                                input.get(0).getMomentum());
+                        System.out.println("Error Criterion: " + errorCriterion);
+                    }
+                    break;
+                case 7:
+                    if(errorCriterion == 0.0) {
+                        System.out.println("Must initialise first");
+                    } else {
+                        System.out.println("\nReset\n1 reset with starting weights"
+                                + "\n2 reset with new random weights\n0 back");
+                        int subCommand = sc.nextInt();
+                        switch(subCommand) {
+                            case 1:
+                                resetBack();
+                                break;
+                            case 2:
+                                reset();
+                                break;
+                            case 0:
+                                break;
+                            default:
+                                System.out.println("Invalid command");
+                                break;
+                        }
+                    }
+                    break;
+                case 8:
+                    if(errorCriterion == 0.0) {
+                        System.out.println("Must initialise first");
+                    } else {
+                        Random rand = new Random();
+                        ArrayList<String> subIFile;
+                        ArrayList<String> subTFile;
+                        ArrayList<Integer> usedInd;
+                        ArrayList<ArrayList<Double>> matchRate = new ArrayList<>();
+                        for(int i = 0; i < 5; i++) {
+                            Double per = 1 - ((i*0.2)+0.1);
+                            int inCount = (int)((double)iFileContent.size() * per);
+                            matchRate.add(new ArrayList<>());
+                            for(int x = 0; x < 8; x++) {
+                                resetBack();
+                                subIFile = new ArrayList<>();
+                                subTFile = new ArrayList<>();
+                                usedInd = new ArrayList<>();
+                                for(int j = 0; j < inCount; j++) {
+                                    int ind = rand.nextInt(iFileContent.size());
+                                    if(!(usedInd.contains(ind))) {
+                                        usedInd.add(ind);
+                                        subIFile.add(iFileContent.get(ind));
+                                        subTFile.add(tFileContent.get(ind));
+                                    } else {
+                                        j--;
+                                    }
+                                }
+                                learn(1, subIFile, subTFile);
+                                int matchCount = test();
+                                matchRate.get(i).add((double)matchCount/150);
+                            }
+                        }
+                        for(int x = 0; x < matchRate.size(); x++) {
+                            System.out.println("");
+                            for(int j = 0; j < matchRate.get(x).size(); j++) {
+                                System.out.print(matchRate.get(x).get(j)+"\t");
+                            }
+                        }
                     }
                     break;
                 case 0:
@@ -68,6 +180,49 @@ public class NeuralNetwork {
         }
     }
     
+    public static void updateParam(int param) {
+        Scanner sc = new Scanner(System.in);
+        if(param == 1) {
+            System.out.println("Enter new learning constant");
+            Double lc = sc.nextDouble();
+            bias.setLearningConstant(lc);
+            for(Unit i : hidden) {
+                i.setLearningConstant(lc);
+            }
+            for(Unit i : input) {
+                i.setLearningConstant(lc);
+            }
+        } else if (param == 2) {
+            System.out.println("Enter new momentum");
+            Double mom = sc.nextDouble();
+            bias.setMomentum(mom);
+            for(Unit i : hidden) {
+                i.setMomentum(mom);
+            }
+            for(Unit i : input) {
+                i.setMomentum(mom);
+            }
+        } else {
+            System.out.println("Enter new error criterion");
+            errorCriterion = sc.nextDouble();
+        }
+    }
+    
+    public static void resetBack () {
+        for(int i = 0; i < input.size(); i++) {
+            input.get(i).setConnectionWeights(startWeights.get(i));
+        }
+        for(int i = input.size(); i < input.size() + hidden.size(); i++) {
+            hidden.get(i - input.size()).setConnectionWeights(startWeights.get(i));
+        }
+        bias.setConnectionWeights(startWeights.get(startWeights.size() - 1));
+        setStartWeights();
+    }
+    
+    /**
+     * Reset the weight connections of all unit in the network with new random
+     * weights
+     */
     public static void reset () {
         for(Unit i : input) {
             i.reset(hidden);
@@ -75,8 +230,21 @@ public class NeuralNetwork {
         for(Unit i : hidden) {
             i.reset(output);
         }
+        ArrayList<Unit> biasConnect = new ArrayList<>();
+        for(Unit i : hidden) {
+            biasConnect.add(i);
+        }
+        for(Unit i : output) {
+            biasConnect.add(i);
+        }
+        bias.reset(biasConnect);
+        setStartWeights();
     }
     
+    /**
+     * Prints out all the unit connection in the network. Prints three tables :
+     * Input to Hidden weights, Hidden to Output weights and bias weights.
+     */
     public static void displayWeights () {
         NumberFormat f = new DecimalFormat("#0.0000000");
         
@@ -104,18 +272,64 @@ public class NeuralNetwork {
             }
         }
         System.out.println("");
+        
+        System.out.println("\nBias Weights\n\n\tBias1");
+        HashMap<Unit, Double> biasWeights = bias.getConnections();
+        for(int i = 0; i < hidden.size(); i++) {
+            System.out.println("Hidden" + (i+1) + "\t" + 
+                    f.format(biasWeights.get(hidden.get(i))));
+        }
+        for(int i = 0; i < output.size(); i++) {
+            System.out.println("Output" + (i+1) + "\t" + 
+                    f.format(biasWeights.get(output.get(i))));
+        }
+        
     }
     
-    public static void test () {
+    /**
+     * Tests the network by doing forward propergation and comparing network 
+     * output to expected output. Show all unit activations during propergation.
+     */
+    public static int test () {
+        int matchCount = 0;
         for(int i = 0; i < iFileContent.size(); i++) {
             System.out.println("Input: " + iFileContent.get(i));
             System.out.println("Expected Output: "+tFileContent.get(i)+"\n");
             setCycle(iFileContent.get(i), tFileContent.get(i));
-            testCycle();
+            int[] outputVal = testCycle();
+            matchCount += confirmMatch(outputVal, tFileContent.get(i));
+        }
+        return matchCount;
+    }
+    
+    /**
+     * Confirms network output matches expected output
+     * @param outputVal network output
+     * @param expectedVal expected output
+     * @return 1 if match, 0 if not
+     */
+    public static int confirmMatch (int[] outputVal, String expectedVal) {
+        boolean match = true;
+        String [] split = expectedVal.split(" ");
+        for(int i = 0; i < outputVal.length; i++) {
+            if(outputVal[i] != Double.valueOf(split[i])) {
+                match = false;
+            }
+        }
+        if (match) {
+            return 1;
+        } else {
+            return 0;
         }
     }
     
-    public static void testCycle () {
+    /**
+     * Performs forward propergation for a single pattern
+     * @return output of propergation
+     */
+    public static int[] testCycle () {
+        int [] outputVal = new int[output.size()]; 
+        bias.forwardPropergate();
         for(int i = 0; i < input.size(); i++) {
             System.out.println("Input" + i + ": " + input.get(i).getOutput());
             input.get(i).forwardPropergate();
@@ -129,14 +343,18 @@ public class NeuralNetwork {
             output.get(i).activation();
             if(output.get(i).getOutput() > 0.5) {
                 System.out.println("Output" + i + ": 1.0");
+                outputVal[i] = 1;
             } else {
                 System.out.println("Output" + i + ": 0.0");
+                outputVal[i] = 0;
             }
         }
         System.out.println("");
+        return outputVal;
     }
     
-    public static void learn (int stopType) {
+    public static void learn (int stopType, ArrayList<String> inFile, 
+            ArrayList<String> outFile) {
         epoch = 0;
         Scanner sc = new Scanner(System.in);
         int epochLimit;
@@ -146,7 +364,7 @@ public class NeuralNetwork {
             epochLimit = sc.nextInt();
             currErrorCrit = 0.0;
         } else {
-            epochLimit = 10000;
+            epochLimit = 250000;
             currErrorCrit = errorCriterion;
         }
         
@@ -155,34 +373,52 @@ public class NeuralNetwork {
         while (popError > currErrorCrit && epoch < epochLimit) {
             popError = 0.0;
             patternError = 0.0;
-            for(int i = 0; i < iFileContent.size(); i++) {
-                setCycle(iFileContent.get(i), tFileContent.get(i));
+            for(int i = 0; i < inFile.size(); i++) {
+                setCycle(inFile.get(i), outFile.get(i));
                 cycle();
                 for(Unit ix : output) {
-                    patternError += Math.pow(ix.getError(), 2);
+                    patternError += Math.pow(ix.getExpectedOut() - 
+                            ix.getOutput(), 2);
                 }
                 //System.out.println("Pattern error: " + patternError);
                 popError += patternError * 0.5;
             }
-            popError /= Double.valueOf(pFileContent.get(2))*iFileContent.size();
+            popError /= Double.valueOf(pFileContent.get(2))*inFile.size();
             epoch++;
             if(epoch % 100 == 0) {
                 System.out.println("Epoch " + epoch);
                 System.out.println("Population Error: " + popError);
             }
-            for (Unit i : hidden) {
+            for(Unit i : hidden) {
+                i.averageChange(inFile.size());
                 i.adjustWeights();
                 i.setprvWeightChange();
                 i.resetNetChange();
             }
             for(Unit i : input) {
+                i.averageChange(inFile.size());
                 i.adjustWeights();
                 i.setprvWeightChange();
                 i.resetNetChange();
             }
+            bias.averageChange(inFile.size());
+            bias.adjustWeights();
+            bias.setprvWeightChange();
+            bias.resetNetChange();
         }
         System.out.println("Epoch " + epoch);
         System.out.println("Population Error: " + popError);
+    }
+    
+    public static void setStartWeights () {
+        startWeights = new ArrayList<>();
+        for(Unit i : input) {
+            startWeights.add(i.copyWeights());
+        }
+        for(Unit i : hidden) {
+            startWeights.add(i.copyWeights());
+        }
+        startWeights.add(bias.copyWeights());
     }
     
     public static void readInput () {
@@ -223,6 +459,9 @@ public class NeuralNetwork {
                     Double.valueOf(pFileContent.get(4))));
         }
         errorCriterion = Double.valueOf(pFileContent.get(5));
+        bias = new Unit(hidden, output, Double.valueOf(pFileContent.get(3)), 
+                Double.valueOf(pFileContent.get(4)));
+        setStartWeights();
         
         boolean validIFile = false;
         while(!validIFile) {
@@ -265,13 +504,18 @@ public class NeuralNetwork {
         }
     }
 
+    /**
+     * Sets the input and expected output for a pattern
+     * @param inputString
+     * @param expectedOutput 
+     */
     public static void setCycle(String inputString, String expectedOutput) {
         String[] splitInput = inputString.split(" +");
         for(int i = 0; i < splitInput.length; i++) {
             //System.out.print("Input " + i + " ");
             input.get(i).setOutput(Double.valueOf(splitInput[i]));
         }
-        String[] splitOutput = expectedOutput.split(" ");
+        String[] splitOutput = expectedOutput.split(" +");
         for(int i = 0; i < splitOutput.length; i++) {
             Unit x = output.get(i);
             x.setExpectedOut(Double.valueOf(splitOutput[i]));
@@ -282,7 +526,11 @@ public class NeuralNetwork {
         }   
     }
 
+    /**
+     * Performs forward and back propergation for set pattern.
+     */
     public static void cycle() {
+        bias.forwardPropergate();
         for(Unit i : input) {
             //System.out.println("Input " + i);
             i.forwardPropergate();
@@ -293,7 +541,7 @@ public class NeuralNetwork {
             i.forwardPropergate();
         }
         for(Unit i : output) {
-            i.outputActivation();
+            i.activation();
             i.setError();
             //System.out.println("Output " + i.getOutput());
         }
@@ -304,5 +552,6 @@ public class NeuralNetwork {
         for(Unit i : input) {
             i.addWeightChange();
         }
+        bias.addWeightChange();
     }
 }
