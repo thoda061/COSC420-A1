@@ -2,6 +2,10 @@ import java.util.*;
 import java.io.*;
 import java.text.*;
 
+/**
+ * Class for building and using a neural network
+ * @author Daniel Thomson, ID:5040702, 2018
+ */
 public class NeuralNetwork {
 
     //Array of units in the input layer
@@ -22,6 +26,11 @@ public class NeuralNetwork {
     private static Double errorCriterion = 0.0;
     private static ArrayList<HashMap<Unit, Double>> startWeights = new ArrayList<>();
 
+    /**
+     * Main program execution, runs the program's main menu until user enter
+     * 0 to exit
+     * @param args command line arguments (not used)
+     */
     public static void main(String[]args) {
         Scanner sc = new Scanner(System.in);
         int command = 1;
@@ -131,47 +140,6 @@ public class NeuralNetwork {
                         }
                     }
                     break;
-                case 8:
-                    if(errorCriterion == 0.0) {
-                        System.out.println("Must initialise first");
-                    } else {
-                        Random rand = new Random();
-                        ArrayList<String> subIFile;
-                        ArrayList<String> subTFile;
-                        ArrayList<Integer> usedInd;
-                        ArrayList<ArrayList<Double>> matchRate = new ArrayList<>();
-                        for(int i = 0; i < 5; i++) {
-                            Double per = 1 - ((i*0.2)+0.1);
-                            int inCount = (int)((double)iFileContent.size() * per);
-                            matchRate.add(new ArrayList<>());
-                            for(int x = 0; x < 8; x++) {
-                                resetBack();
-                                subIFile = new ArrayList<>();
-                                subTFile = new ArrayList<>();
-                                usedInd = new ArrayList<>();
-                                for(int j = 0; j < inCount; j++) {
-                                    int ind = rand.nextInt(iFileContent.size());
-                                    if(!(usedInd.contains(ind))) {
-                                        usedInd.add(ind);
-                                        subIFile.add(iFileContent.get(ind));
-                                        subTFile.add(tFileContent.get(ind));
-                                    } else {
-                                        j--;
-                                    }
-                                }
-                                learn(1, subIFile, subTFile);
-                                int matchCount = test();
-                                matchRate.get(i).add((double)matchCount/150);
-                            }
-                        }
-                        for(int x = 0; x < matchRate.size(); x++) {
-                            System.out.println("");
-                            for(int j = 0; j < matchRate.get(x).size(); j++) {
-                                System.out.print(matchRate.get(x).get(j)+"\t");
-                            }
-                        }
-                    }
-                    break;
                 case 0:
                     break;
                 default:
@@ -180,6 +148,11 @@ public class NeuralNetwork {
         }
     }
     
+    /**
+     * Ask for user to enter value with which to update learning parameters
+     * @param param type of parameter to be updated, 1 for learning constant,
+     * 2 for momentum and 3 for error criterion.
+     */
     public static void updateParam(int param) {
         Scanner sc = new Scanner(System.in);
         if(param == 1) {
@@ -324,8 +297,8 @@ public class NeuralNetwork {
     }
     
     /**
-     * Performs forward propergation for a single pattern
-     * @return output of propergation
+     * Performs forward propagation for a single pattern
+     * @return output of propagation
      */
     public static int[] testCycle () {
         int [] outputVal = new int[output.size()]; 
@@ -353,6 +326,16 @@ public class NeuralNetwork {
         return outputVal;
     }
     
+    /**
+     * Repeatedly goes through the process of forward and back propagation in 
+     * order to teach the network, until reached specified amount of epoch or 
+     * population error is less than error criterion.
+     * 
+     * @param stopType determines whether to train to error criterion or to 
+     * specified epoch
+     * @param inFile Array list of input patterns to train with.
+     * @param outFile Array list of expected output patterns to train with.
+     */
     public static void learn (int stopType, ArrayList<String> inFile, 
             ArrayList<String> outFile) {
         epoch = 0;
@@ -364,7 +347,7 @@ public class NeuralNetwork {
             epochLimit = sc.nextInt();
             currErrorCrit = 0.0;
         } else {
-            epochLimit = 250000;
+            epochLimit = 500000;
             currErrorCrit = errorCriterion;
         }
         
@@ -380,7 +363,6 @@ public class NeuralNetwork {
                     patternError += Math.pow(ix.getExpectedOut() - 
                             ix.getOutput(), 2);
                 }
-                //System.out.println("Pattern error: " + patternError);
                 popError += patternError * 0.5;
             }
             popError /= Double.valueOf(pFileContent.get(2))*inFile.size();
@@ -410,6 +392,10 @@ public class NeuralNetwork {
         System.out.println("Population Error: " + popError);
     }
     
+    /**
+     * Stores the all the connection weight value currently set in the network.
+     * Used to reset the network back to initial weights
+     */
     public static void setStartWeights () {
         startWeights = new ArrayList<>();
         for(Unit i : input) {
@@ -421,6 +407,11 @@ public class NeuralNetwork {
         startWeights.add(bias.copyWeights());
     }
     
+    /**
+     * Ask for and read three files, one with network parameter, one with input 
+     * patterns and one with expected output patterns. Uses data in these files 
+     * to initialize the network and train it. 
+     */
     public static void readInput () {
         Scanner sc = new Scanner(System.in);
         String line = null;
@@ -527,23 +518,20 @@ public class NeuralNetwork {
     }
 
     /**
-     * Performs forward and back propergation for set pattern.
+     * Performs forward and back propagation for set pattern.
      */
     public static void cycle() {
         bias.forwardPropergate();
         for(Unit i : input) {
-            //System.out.println("Input " + i);
             i.forwardPropergate();
         }
         for(Unit i : hidden) {
-            //System.out.println("Hidden " + i);
             i.activation();
             i.forwardPropergate();
         }
         for(Unit i : output) {
             i.activation();
             i.setError();
-            //System.out.println("Output " + i.getOutput());
         }
         for(Unit i : hidden) {
             i.addWeightChange();

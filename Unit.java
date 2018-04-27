@@ -2,7 +2,7 @@ import java.util.*;
 
 /**
  * Class representing a unit in a neural network
- * @author dathomson
+ * @author Daniel Thomson, ID:5040702, 2018
  */
 public class Unit {
 
@@ -52,11 +52,11 @@ public class Unit {
         expectedOut = 0.0;
         Random rand = new Random();
         for (Unit i : hiddenLayer) {
-            connectionWeights.put(i,rand.nextDouble() - 0.5);
+            connectionWeights.put(i,(rand.nextDouble() - 0.5) * 0.6);
             prvWeightChange.put(i, 0.0);
         }
         for (Unit i : outputLayer) {
-            connectionWeights.put(i,rand.nextDouble() - 0.5);
+            connectionWeights.put(i,(rand.nextDouble() - 0.5) * 0.6);
             prvWeightChange.put(i, 0.0);
         }
     }
@@ -72,7 +72,7 @@ public class Unit {
     public Unit (ArrayList<Unit> nextLayer, Double learningConstant, Double momentum) {
         Random rand = new Random();
         for (Unit i : nextLayer) {
-            connectionWeights.put(i,rand.nextDouble() - 0.5);
+            connectionWeights.put(i,(rand.nextDouble() - 0.5) * 0.6);
             prvWeightChange.put(i, 0.0);
         }
         error = 0.0;
@@ -84,6 +84,10 @@ public class Unit {
         
     }
     
+    /**
+     * Returns a copy of connection weights, used in storing initial weight for
+     * network reset
+     */
     public HashMap<Unit, Double> copyWeights () {
         HashMap<Unit, Double> copy = new HashMap<>();
         for(Unit i : connectionWeights.keySet()) {
@@ -103,7 +107,7 @@ public class Unit {
         
         Random rand = new Random();
         for (Unit i : nextLayer) {
-            connectionWeights.put(i,rand.nextDouble() - 0.5);
+            connectionWeights.put(i,(rand.nextDouble() - 0.5) * 0.6);
             prvWeightChange.put(i, 0.0);
         }
     }
@@ -118,7 +122,7 @@ public class Unit {
     }
     
     /**
-     * Propergates the result of this units activation to connected units.
+     * Propagates the result of this units activation to connected units.
      */
     public void forwardPropergate () {
         for (Unit i : connectionWeights.keySet()) {
